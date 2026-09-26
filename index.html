@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoCat - 에코펫 키우기</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-2: #16213a;
+      --accent: #38bdf8;
+      --border: #334155;
+      --text: #f8fafc;
+      --sub-text: #94a3b8;
+      --pet: #4ade80;
+      --pet-dark: #22c55e;
+      --danger: #f87171;
+      --gold: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif;
+      display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px;
+    }
+    .app-box {
+      width: 100%; max-width: 420px; background: var(--card);
+      border-radius: 20px; padding: 24px; border: 1px solid var(--border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      max-height: 92vh; overflow-y: auto;
+    }
+    .app-box::-webkit-scrollbar { width: 6px; }
+    .app-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
+    .screen.active { display: flex; }
+
+    .title { font-size: 1.4rem; font-weight: bold; margin-bottom: 16px; color: var(--accent); text-align: center; }
+
+    input, button {
+      width: 100%; padding: 12px; margin-top: 8px; border-radius: 10px;
+      border: 1px solid var(--border); background: #0f172a; color: white; font-size: 0.95rem;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    button { background: var(--accent); color: #0f172a; font-weight: bold; cursor: pointer; transition: 0.2s; border: none; }
+    button:hover { opacity: 0.9; }
+    button.sub-btn { background: #334155; color: white; margin-top: 6px; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .field-row { width: 100%; display: flex; gap: 8px; align-items: flex-start; }
+    .field-row input { flex: 1; }
+    .check-btn { width: auto; white-space: nowrap; padding: 12px 14px; margin-top: 8px; background: #334155; color: white; font-weight: 600; font-size: 0.82rem; }
+    .field-msg { width: 100%; font-size: 0.76rem; margin-top: 4px; margin-bottom: 2px; min-height: 14px; text-align: left; }
+    .field-msg.ok { color: var(--pet); }
+    .field-msg.err { color: var(--danger); }
+    .hint { width: 100%; font-size: 0.74rem; color: var(--sub-text); margin-top: 2px; text-align: left; }
+
+    .coupon-item {
+      background: #0f172a; border: 1px solid var(--border); padding: 14px;
+      border-radius: 12px; margin-top: 10px; width: 100%;
+      display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+    }
+    .coupon-item:hover { border-color: var(--accent); }
+
+    .exp-bar-bg { width: 100%; height: 16px; background: #0f172a; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+    .exp-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width 0.3s; }
+
+    .reward-box {
+      background: #0f172a; border: 2px dashed var(--accent); padding: 16px;
+      border-radius: 12px; text-align: center; margin-top: 15px; width: 100%; display: none;
+    }
+
+    /* ---------- APP SHELL (post-login) ---------- */
+    #screen-app { align-items: stretch; }
+    .app-topbar { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 14px; }
+    .app-topbar .welcome { font-size: 0.85rem; color: var(--sub-text); }
+    .admin-btn {
+      width: auto; margin-top: 0; padding: 7px 12px; font-size: 0.72rem;
+      background: #0f172a; color: var(--sub-text); border: 1px solid var(--border); font-weight: 600;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .admin-btn:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
+
+    .nav-tabs { display: flex; gap: 6px; width: 100%; margin-bottom: 18px; background: #0f172a; padding: 5px; border-radius: 12px; border: 1px solid var(--border); }
+    .nav-tab {
+      flex: 1; margin-top: 0; padding: 9px 4px; font-size: 0.76rem; font-weight: 600;
+      background: transparent; color: var(--sub-text); border-radius: 9px; border: none;
+    }
+    .nav-tab.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+    .nav-tab:hover:not(.active) { opacity: 1; color: var(--text); }
+
+    .subview { display: none; width: 100%; flex-direction: column; align-items: center; }
+    .subview.active { display: flex; }
+
+    /* ---------- PET CARD ---------- */
+    .pet-card { width: 100%; background: var(--card-2); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+    .pet-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .pet-card-head .label { font-size: 0.68rem; letter-spacing: 0.06em; color: var(--sub-text); text-transform: uppercase; }
+    .lvl-badge { font-size: 0.72rem; font-weight: 700; color: #0f172a; background: var(--pet); padding: 5px 10px; border-radius: 8px; }
+    .pet-stage {
+      background: #0f172a; border: 1px solid var(--border); border-radius: 12px; height: 190px;
+      display: flex; align-items: center; justify-content: center; margin: 12px 0; position: relative; overflow: hidden;
+    }
+    .pet-svg { width: 100px; height: 100px; transition: transform .25s ease; }
+    .pet-svg.bump { animation: bump .4s ease; }
+    @keyframes bump { 0%{transform:scale(1);} 30%{transform:scale(1.14) translateY(-6px);} 100%{transform:scale(1);} }
+    .crown { display: none; }
+    .crown.show { display: block; }
+    #userWelcome { font-size: 0.9rem; color: var(--sub-text); }
+    #catLevelName { font-weight: bold; font-size: 1.05rem; text-align: center; margin-top: 2px; }
+    #targetCouponText { font-size: 0.82rem; color: var(--accent); margin-top: 4px; text-align: center; }
+
+    /* ---------- MY RECORD (Eco Pet tab) ---------- */
+    .mistake-tip {
+      width: 100%; font-size: 0.78rem; color: var(--gold); background: rgba(251,191,36,0.08);
+      border: 1px dashed rgba(251,191,36,0.4); border-radius: 10px; padding: 10px 12px; margin-top: 4px;
+    }
+    .mistake-tip.hidden { display: none; }
+
+    .mat-bar-row { width: 100%; display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.78rem; }
+    .mat-bar-row .mat-icon { width: 18px; text-align: center; }
+    .mat-bar-row .mat-label { width: 62px; color: var(--sub-text); }
+    .mat-bar-track { flex: 1; height: 8px; background: #0f172a; border-radius: 5px; overflow: hidden; }
+    .mat-bar-fill { height: 100%; background: linear-gradient(90deg, var(--pet-dark), var(--pet)); border-radius: 5px; }
+    .mat-bar-row .mat-pct { width: 34px; text-align: right; color: var(--sub-text); font-size: 0.72rem; }
+
+    .impact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+    .impact-box { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3); border-radius: 12px; padding: 14px; text-align: center; }
+    .impact-box .n { font-size: 1.15rem; font-weight: 800; color: var(--pet); }
+    .impact-box .l { font-size: 0.7rem; color: var(--sub-text); margin-top: 3px; }
+
+    .history-wrap { width: 100%; max-height: 230px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; }
+    .history-row {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+    }
+    .history-row:last-child { border-bottom: none; }
+    .history-row .h-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+    .history-row .h-main { flex: 1; }
+    .history-row .h-mat { font-weight: 600; }
+    .history-row .h-time { color: var(--sub-text); font-size: 0.68rem; margin-top: 1px; }
+    .history-row .h-weight { color: var(--sub-text); font-size: 0.72rem; margin-right: 4px; }
+    .h-badge { font-size: 0.68rem; font-weight: 700; padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
+    .h-badge.clean { background: rgba(74,222,128,0.15); color: var(--pet); }
+    .h-badge.dirty { background: rgba(248,113,113,0.15); color: var(--danger); }
+    .report-btn {
+      width: auto; margin-top: 0; padding: 5px 8px; font-size: 0.66rem; background: #0f172a;
+      color: var(--sub-text); border: 1px solid var(--border);
+    }
+    .report-btn:hover { color: var(--danger); border-color: var(--danger); opacity: 1; }
+    .report-btn.done { color: var(--sub-text); border-color: var(--border); background: transparent; opacity: 0.6; }
+    .history-empty { padding: 22px 10px; text-align: center; color: var(--sub-text); font-size: 0.82rem; }
+
+    /* ---------- RANKING VIEW ---------- */
+    .rank-panel { width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .rank-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .rank-row:last-child { border-bottom: none; }
+    .rank-row .r-num { width: 22px; font-weight: 700; color: var(--sub-text); font-size: 0.8rem; }
+    .rank-row .r-nick { flex: 1; font-weight: 600; }
+    .rank-row .r-lv { font-size: 0.75rem; color: var(--pet); font-weight: 700; }
+    .rank-empty { padding: 24px 10px; text-align: center; color: var(--sub-text); font-size: 0.85rem; }
+    .section-label { width: 100%; font-size: 0.9rem; font-weight: 700; margin: 14px 0 8px; color: var(--text); }
+    .section-label:first-child { margin-top: 0; }
+
+    /* ---------- DASHBOARD VIEW ---------- */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+    .stat-box { background: #0f172a; border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .stat-box .n { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+    .stat-box .l { font-size: 0.72rem; color: var(--sub-text); margin-top: 2px; }
+
+    /* ---------- ADMIN ---------- */
+    #screen-admin { align-items: stretch; }
+    .admin-table-wrap { width: 100%; max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; margin-top: 10px; }
+    table.admin-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+    table.admin-table th, table.admin-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    table.admin-table th { background: #0f172a; color: var(--sub-text); position: sticky; top: 0; }
+    .admin-note { width: 100%; font-size: 0.78rem; color: var(--sub-text); background: #0f172a; border: 1px dashed var(--border); border-radius: 10px; padding: 12px; margin-top: 14px; }
+
+    .search-sort-row { width: 100%; display: flex; gap: 8px; margin-top: 14px; }
+    .search-sort-row input { flex: 1.4; margin-top: 0; font-size: 0.82rem; }
+    .search-sort-row select {
+      flex: 1; margin-top: 0; padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border);
+      background: #0f172a; color: white; font-size: 0.78rem;
+    }
+    table.admin-table tbody tr { cursor: pointer; }
+    table.admin-table tbody tr:hover { background: rgba(56,189,248,0.06); }
+
+    .filter-tabs { display: flex; gap: 6px; width: 100%; margin-bottom: 10px; }
+    .filter-tab {
+      flex: 1; margin-top: 0; padding: 8px 4px; font-size: 0.74rem; font-weight: 600;
+      background: #0f172a; color: var(--sub-text); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .filter-tab.active { background: rgba(56,189,248,0.12); color: var(--accent); border-color: var(--accent); }
+
+    .report-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+    .report-row:last-child { border-bottom: none; }
+    .report-row .rp-main { flex: 1; }
+    .report-row .rp-user { font-weight: 600; }
+    .report-row .rp-sub { font-size: 0.68rem; color: var(--sub-text); margin-top: 1px; }
+    .status-pill { font-size: 0.66rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+    .status-pill.pending { background: rgba(251,191,36,0.15); color: var(--gold); }
+    .status-pill.resolved { background: rgba(74,222,128,0.15); color: var(--pet); }
+    .resolve-btn { width: auto; margin-top: 0; padding: 5px 8px; font-size: 0.66rem; background: #0f172a; color: var(--sub-text); border: 1px solid var(--border); }
+    .resolve-btn:hover { color: var(--pet); border-color: var(--pet); opacity: 1; }
+
+    /* ---------- MODAL ---------- */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box { width: 100%; max-width: 320px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+    .modal-box .title { font-size: 1.05rem; margin-bottom: 12px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .modal-actions button { margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="app-box">
+
+  <!-- SCREEN 1: 로그인 -->
+  <div class="screen active" id="screen-login">
+    <div class="app-topbar" style="justify-content:flex-end; margin-bottom:2px;">
+      <button type="button" class="admin-btn" onclick="openAdminModal()">⚙ 관리자</button>
+    </div>
+    <div class="title">🐱 EcoCat 로그인</div>
+    <input type="text" id="login-id" placeholder="아이디">
+    <input type="password" id="login-pw" placeholder="비밀번호">
+    <button onclick="handleLogin()">로그인</button>
+    <button class="sub-btn" onclick="showScreen('screen-signup')">회원가입 하기</button>
+  </div>
+
+  <!-- SCREEN 2: 회원가입 -->
+  <div class="screen" id="screen-signup">
+    <div class="title">📝 회원가입</div>
+
+    <div class="field-row">
+      <input type="text" id="signup-id" placeholder="사용할 아이디" oninput="resetIdCheck()">
+      <button type="button" class="check-btn" onclick="checkIdAvailability()">중복확인</button>
+    </div>
+    <div class="field-msg" id="id-check-msg"></div>
+
+    <input type="password" id="signup-pw" placeholder="비밀번호" oninput="validatePwLive()">
+    <div class="hint" id="pw-hint">6자 이상 + 특수문자(!@#$ 등) 포함</div>
+
+    <input type="text" id="signup-nick" placeholder="닉네임">
+
+    <button onclick="handleSignup()">가입 완료</button>
+    <button class="sub-btn" onclick="showScreen('screen-login')">취소 (로그인으로)</button>
+  </div>
+
+  <!-- SCREEN 3: 목표 쿠폰 선택 -->
+  <div class="screen" id="screen-select-coupon">
+    <div class="title">🎁 목표 쿠폰 선택</div>
+    <p style="font-size: 0.85rem; color: var(--sub-text); margin-bottom: 10px;">쿠폰 난이도에 따라 필요 경험치가 달라집니다.</p>
+
+    <div class="coupon-item" onclick="selectCoupon('☕ 컴포즈 아메리카노', 5000)">
+      <div>
+        <strong>☕ 컴포즈 아메리카노</strong><br>
+        <span style="font-size:0.75rem; color:var(--sub-text);">난이도: 쉬움 (총 5,000 EXP)</span>
+      </div>
+      <span style="color:var(--accent); font-weight:bold;">Lv.5 필요</span>
+    </div>
+
+    <div class="coupon-item" onclick="selectCoupon('🍔 롯데리아 데리버거', 10000)">
+      <div>
+        <strong>🍔 롯데리아 데리버거</strong><br>
+        <span style="font-size:0.75rem; color:var(--sub-text);">난이도: 보통 (총 10,000 EXP)</span>
+      </div>
+      <span style="color:var(--accent); font-weight:bold;">Lv.5 필요</span>
+    </div>
+
+    <div class="coupon-item" onclick="selectCoupon('🍗 맘스터치 싸이버거', 20000)">
+      <div>
+        <strong>🍗 맘스터치 싸이버거</strong><br>
+        <span style="font-size:0.75rem; color:var(--sub-text);">난이도: 어려움 (총 20,000 EXP)</span>
+      </div>
+      <span style="color:var(--accent); font-weight:bold;">Lv.5 필요</span>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: 로그인 후 앱 셸 -->
+  <div class="screen" id="screen-app">
+    <div class="app-topbar">
+      <div class="welcome" id="userWelcome"></div>
+      <button type="button" class="admin-btn" onclick="openAdminModal()">⚙ 관리자</button>
+    </div>
+
+    <div class="nav-tabs">
+      <button type="button" class="nav-tab active" data-tab="tab-ecopet" onclick="showTab('tab-ecopet')">🐾 Eco Pet</button>
+      <button type="button" class="nav-tab" data-tab="tab-ranking" onclick="showTab('tab-ranking')">🏆 전국 랭킹</button>
+      <button type="button" class="nav-tab" data-tab="tab-dashboard" onclick="showTab('tab-dashboard')">📊 Eco 대시보드</button>
+    </div>
+
+    <!-- TAB: ECO PET -->
+    <div class="subview active" id="tab-ecopet">
+      <div class="pet-card">
+        <div class="pet-card-head">
+          <span class="label">MY ECO PET</span>
+          <span class="lvl-badge" id="lvlBadgeTop">Lv.1</span>
+        </div>
+        <div class="pet-stage">
+          <svg class="pet-svg" id="petSvg" viewBox="0 0 100 100">
+            <ellipse cx="50" cy="88" rx="26" ry="5" fill="#000" opacity="0.25"/>
+            <polygon id="petCrown" class="crown" points="38,20 44,10 50,18 56,10 62,20" fill="var(--gold)"/>
+            <rect id="antenna" x="47" y="20" width="6" height="16" rx="3" fill="#22c55e"/>
+            <circle id="antennaTip" cx="50" cy="18" r="5" fill="#4ade80"/>
+            <rect id="petBody" x="30" y="34" width="40" height="36" rx="10" fill="#4ade80"/>
+            <rect x="30" y="34" width="40" height="36" rx="10" fill="url(#shine)" opacity="0.5"/>
+            <circle cx="42" cy="50" r="4" fill="#0f172a"/>
+            <circle cx="58" cy="50" r="4" fill="#0f172a"/>
+            <path d="M 43 60 Q 50 66 57 60" stroke="#0f172a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <rect id="earL" x="20" y="44" width="10" height="8" rx="4" fill="#22c55e"/>
+            <rect id="earR" x="70" y="44" width="10" height="8" rx="4" fill="#22c55e"/>
+            <defs>
+              <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fff" stop-opacity="0.35"/>
+                <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div style="font-weight:bold; font-size:1.05rem; text-align:center;" id="catLevelName">Lv.1 아기 에코펫</div>
+        <div id="targetCouponText"></div>
+
+        <div class="exp-bar-bg">
+          <div class="exp-bar-fill" id="expFill"></div>
+        </div>
+        <div style="font-size:0.85rem; margin-top:6px; text-align:center;" id="expText">0 / 1,000 EXP (Lv.1)</div>
+      </div>
+
+      <div class="reward-box" id="rewardBox">
+        <h3 style="color:var(--accent); margin-bottom:6px;">🎉 Lv.5 만렙 달성!</h3>
+        <p id="rewardCouponName" style="font-size:0.9rem; margin-bottom:10px;"></p>
+        <button onclick="claimRewardAndReset()">🎁 쿠폰 수령 & 다시 키우기</button>
+      </div>    
+
+      <div class="section-label">📦 나의 분리배출 기록</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="n" id="recTotalCount">0개</div><div class="l">총 투입 개수</div></div>
+        <div class="stat-box"><div class="n" id="recTotalWeight">0kg</div><div class="l">총 처리량</div></div>
+        <div class="stat-box"><div class="n" id="recSuccessRate">0%</div><div class="l">분리배출 성공률</div></div>
+        <div class="stat-box"><div class="n" id="recDirtyCount">0개</div><div class="l">오염 판별 횟수</div></div>
+      </div>
+
+      <div class="section-label">재질별 비율</div>
+      <div id="materialBreakdown" style="width:100%;"></div>
+      <div class="mistake-tip hidden" id="mistakeTip"></div>
+
+      <div class="section-label">🌱 나의 환경 임팩트 (추정치)</div>
+      <div class="impact-grid">
+        <div class="impact-box"><div class="n" id="impactTrees">0그루</div><div class="l">절약한 나무</div></div>
+        <div class="impact-box"><div class="n" id="impactCo2">0kg</div><div class="l">절감한 CO₂</div></div>
+      </div>
+
+      <div class="section-label">최근 기록</div>
+      <div class="history-wrap" id="historyList"></div>
+      <!-- 📱 스마트폰 화면에 PIN 번호 연동 UI 추가 -->
+      <div style="margin-top: 15px; padding: 15px; background: #0f172a; border: 1px dashed var(--accent); border-radius: 12px; text-align: center;">
+        <div style="font-size: 0.85rem; color: var(--sub-text); margin-bottom: 8px;">쓰레기통 화면의 6자리 PIN을 입력하세요</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="kiosk-pin" placeholder="PIN 번호" style="margin-top: 0; flex: 1; text-align: center;">
+          <button type="button" style="width: auto; margin-top: 0; padding: 0 15px;" onclick="connectKiosk()">연동하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: 전국 랭킹 시스템 -->
+    <div class="subview" id="tab-ranking">
+      <div class="section-label">🏆 전국 랭킹 TOP 10</div>
+      <div class="rank-panel" id="rankingList"></div>
+      <div class="hint" style="margin-top:10px; text-align:center;">※ 이 데모는 브라우저 저장소(localStorage) 기준이라, 같은 브라우저에서 가입한 사용자만 랭킹에 표시됩니다.</div>
+    </div>
+
+    <!-- TAB: Eco 대시보드 -->
+    <div class="subview" id="tab-dashboard">
+      <div class="section-label">📊 실시간 통계</div>
+      <div class="stat-grid" id="dashStats"></div>
+
+      <div class="section-label">랭킹 미리보기</div>
+      <div class="rank-panel" id="dashRankingPreview"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 5: 관리자 모드 -->
+  <div class="screen" id="screen-admin">
+    <div class="title" style="color: var(--gold);">🔒 관리자 모드</div>
+
+    <div class="nav-tabs">
+      <button type="button" class="nav-tab active" data-admintab="admin-tab-users" onclick="showAdminTab('admin-tab-users')">👤 유저 관리</button>
+      <button type="button" class="nav-tab" data-admintab="admin-tab-reports" onclick="showAdminTab('admin-tab-reports')">🚩 신고 관리</button>
+      <button type="button" class="nav-tab" data-admintab="admin-tab-export" onclick="showAdminTab('admin-tab-export')">📤 내보내기</button>
+    </div>
+
+    <!-- 관리자 탭: 유저 관리 -->
+    <div class="subview active" id="admin-tab-users">
+      <div class="stat-grid" id="adminStats"></div>
+
+      <div class="search-sort-row">
+        <input type="text" id="adminSearchInput" placeholder="아이디 또는 닉네임 검색" oninput="renderAdminUsers()">
+        <select id="adminSortSelect" onchange="renderAdminUsers()">
+          <option value="level">레벨순</option>
+          <option value="recent">최근활동순</option>
+          <option value="joined">가입순</option>
+        </select>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>아이디</th><th>닉네임</th><th>레벨</th><th>EXP</th><th>목표 쿠폰</th><th>투입</th><th>신고</th></tr>
+          </thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+      </div>
+      <div class="hint" style="text-align:center; margin-top:8px;">행을 클릭하면 해당 유저의 상세 기록을 볼 수 있어요.</div>
+    </div>
+
+    <!-- 관리자 탭: 신고 관리 -->
+    <div class="subview" id="admin-tab-reports">
+      <div class="section-label" style="margin-top:0;">재질별 오분류 신고 랭킹</div>
+      <div id="reportMatRanking" style="width:100%;"></div>
+
+      <div class="section-label">신고 처리 큐</div>
+      <div class="filter-tabs" id="reportFilterTabs">
+        <button type="button" class="filter-tab active" data-filter="all" onclick="setReportFilter('all')">전체</button>
+        <button type="button" class="filter-tab" data-filter="pending" onclick="setReportFilter('pending')">검토중</button>
+        <button type="button" class="filter-tab" data-filter="resolved" onclick="setReportFilter('resolved')">확인완료</button>
+      </div>
+      <div class="history-wrap" id="reportQueueList" style="max-height:280px;"></div>
+    </div>
+
+    <!-- 관리자 탭: 내보내기 -->
+    <div class="subview" id="admin-tab-export">
+      <div class="admin-note" style="margin-top:0;">CSV는 현재 브라우저(localStorage)에 저장된 데이터를 기준으로 내보내집니다. 엑셀이나 구글 시트에서 바로 열 수 있어요.</div>
+      <button style="margin-top:14px;" onclick="exportUsersCSV()">📥 전체 유저 요약 CSV 다운로드</button>
+      <button style="margin-top:10px;" onclick="exportHistoryCSV()">📥 전체 분리배출 히스토리 CSV 다운로드</button>
+    </div>
+
+    <div class="admin-note" style="margin-top:16px;">🚧 예정 기능: 쿠폰 목록 편집, EXP 배율 조정, 공지사항 등록, 관리자 비밀번호 변경</div>
+
+    <button class="sub-btn" style="margin-top:14px;" onclick="closeAdmin()">← 메인으로 돌아가기</button>
+  </div>
+
+</div>
+
+<!-- 관리자 비밀번호 모달 -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal-box">
+    <div class="title">⚙ 관리자 인증</div>
+    <input type="password" id="admin-pw" placeholder="관리자 비밀번호">
+    <div class="field-msg err" id="admin-pw-msg"></div>
+    <div class="modal-actions">
+      <button class="sub-btn" onclick="closeAdminModal()">취소</button>
+      <button onclick="submitAdminPw()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 유저 상세 모달 -->
+<div class="modal-overlay" id="userDetailModal">
+  <div class="modal-box" style="max-width: 380px;">
+    <div class="title" id="userDetailTitle">유저 상세</div>
+    <div class="stat-grid" id="userDetailStats" style="margin-bottom:12px;"></div>
+    <div class="section-label" style="margin-top:0;">분리배출 기록</div>
+    <div class="history-wrap" id="userDetailHistory" style="max-height:220px;"></div>
+    <div class="modal-actions">
+      <button class="sub-btn" onclick="closeUserDetail()">닫기</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // 🌐 백엔드 서버 주소 (나중에 AWS EC2 주소로 바뀌게 될 부분입니다)
+  const API_BASE = "http://3.25.99.207:8000";
+  
+  let currentUser = null;
+  let idChecked = { value: null, available: false };
+
+  const ADMIN_PASSWORD = '1234*';
+
+  const catLevels = [
+    { level: 1, name: "Lv.1 아기 에코펫", color: "#4ade80" },
+    { level: 2, name: "Lv.2 장난꾸러기 에코펫", color: "#34d399" },
+    { level: 3, name: "Lv.3 탐험가 에코펫", color: "#2dd4bf" },
+    { level: 4, name: "Lv.4 환경파수꾼 에코펫", color: "#38bdf8" },
+    { level: 5, name: "Lv.5 지구수호 마스터펫", color: "#fbbf24" }
+  ];
+
+  // 재질별 아이콘 / 실제 로봇 AI 판별 시 오염(Dirty) 발생 확률 (데모용 시뮬레이션 값)
+  const MATERIALS = [
+    { key: 'plastic', label: '플라스틱', icon: '♻️', dirtyRate: 0.20 },
+    { key: 'can', label: '캔', icon: '🥫', dirtyRate: 0.15 },
+    { key: 'glass', label: '유리', icon: '🍾', dirtyRate: 0.35 },
+    { key: 'paper', label: '종이', icon: '📦', dirtyRate: 0.25 },
+    { key: 'general', label: '일반쓰레기', icon: '🗑️', dirtyRate: 0.10 }
+  ];
+
+  // 환경 임팩트 환산 계수 (재활용 1kg 기준 추정치)
+  const TREE_PER_KG = 0.017;   // 1kg 재활용 ≈ 나무 0.017그루 절약
+  const CO2_PER_KG = 0.5;      // 1kg 재활용 ≈ CO2 0.5kg 절감
+
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  /* ---------------- 회원가입 검증 ---------------- */
+
+  function resetIdCheck() {
+    idChecked = { value: null, available: false };
+    document.getElementById('id-check-msg').textContent = '';
+    document.getElementById('id-check-msg').className = 'field-msg';
+  }
+
+  // 💡 [수정됨] 서버 DB와 통신하여 아이디 중복을 확인하는 함수
+  async function checkIdAvailability() {
+    const id = document.getElementById('signup-id').value.trim();
+    const msg = document.getElementById('id-check-msg');
+    
+    if (!id) {
+      msg.textContent = '아이디를 입력해주세요.';
+      msg.className = 'field-msg err';
+      return;
+    }
+
+    try {
+      // 🚀 서버에 이 아이디가 DB에 있는지 물어보기
+      const response = await fetch(`${API_BASE}/api/check_id/${id}`);
+      const result = await response.json();
+
+      if (!result.available) {
+        idChecked = { value: id, available: false };
+        msg.textContent = '이미 사용 중인 아이디입니다.';
+        msg.className = 'field-msg err';
+      } else {
+        idChecked = { value: id, available: true };
+        msg.textContent = '사용 가능한 아이디입니다.';
+        msg.className = 'field-msg ok';
+      }
+    } catch (error) {
+      console.error("중복 확인 에러:", error);
+      msg.textContent = '서버와 통신할 수 없습니다.';
+      msg.className = 'field-msg err';
+    }
+  }
+
+  function isValidPassword(pw) {
+    // 6자 이상 + 특수문자 최소 1개 포함
+    return pw.length >= 6 && /[^A-Za-z0-9]/.test(pw);
+  }
+
+  function validatePwLive() {
+    const pw = document.getElementById('signup-pw').value;
+    const hint = document.getElementById('pw-hint');
+    if (!pw) {
+      hint.textContent = '6자 이상 + 특수문자(!@#$ 등) 포함';
+      hint.style.color = 'var(--sub-text)';
+      return;
+    }
+    if (isValidPassword(pw)) {
+      hint.textContent = '✓ 사용 가능한 비밀번호입니다.';
+      hint.style.color = 'var(--pet)';
+    } else {
+      hint.textContent = '✗ 6자 이상 + 특수문자(!@#$ 등)를 포함해야 합니다.';
+      hint.style.color = 'var(--danger)';
+    }
+  }
+  // ==========================================
+  // 1. 회원가입 (서버로 데이터 전송)
+  // ==========================================
+  async function handleSignup() {
+    const id = document.getElementById('signup-id').value.trim();
+    const pw = document.getElementById('signup-pw').value.trim();
+    const nick = document.getElementById('signup-nick').value.trim();
+
+    if (!id || !pw || !nick) { alert('모든 항목을 입력해주세요.'); return; }
+
+    try {
+      // 🚀 서버의 /api/signup 주소로 POST 요청
+      const response = await fetch(`${API_BASE}/api/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, pw: pw, nick: nick })
+      });
+    
+      const result = await response.json(); // 서버의 답변을 JSON으로 변환
+
+      if (response.ok) {
+        alert('회원가입이 완료되었습니다! 로그인해주세요.');
+        showScreen('screen-login');
+      } else {
+        alert(result.detail); // 에러 발생 시 서버가 보낸 메시지 출력 (예: 이미 존재하는 아이디)
+      }
+    } catch (error) {
+      alert('서버와 통신할 수 없습니다. 서버가 켜져 있는지 확인해주세요.');
+    }
+  }
+
+  // ==========================================
+  // 2. 로그인 (서버에서 데이터 확인 및 기록 연동)
+  // ==========================================
+  async function handleLogin() {
+    const id = document.getElementById('login-id').value.trim();
+    const pw = document.getElementById('login-pw').value.trim();
+
+    if (!id || !pw) {
+      alert('아이디와 비밀번호를 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, pw: pw })
+      });
+      
+      const result = await response.json();
+
+      if (response.ok) {
+        currentUser = {
+          id: id,
+          nick: result.user_info.nick,
+          currentLevel: result.user_info.level,
+          currentExp: result.user_info.exp,
+          targetCoupon: '☕ 컴포즈 아메리카노', // 기본값 매칭
+          totalTargetExp: 5000,
+          history: []
+        };
+        
+        // 💡 [DB 연동] 서버에서 유저의 과거 분리배출 기록 전체 가져오기
+        try {
+          const historyRes = await fetch(`${API_BASE}/api/user_info/${id}/history`);
+          if (historyRes.ok) {
+            const historyData = await historyRes.json();
+            currentUser.history = historyData.history || [];
+          }
+        } catch (hErr) {
+          console.error("과거 기록 로드 실패:", hErr);
+        }
+
+        updateMainUI(); 
+        showScreen('screen-app'); 
+        showTab('tab-ecopet');        
+        
+        fetch(`${API_BASE}/api/kiosk/trigger_pin`, {
+            method: 'POST'
+        })
+        .then(res => console.log("✅ 쓰레기통에 새 PIN 번호 생성 신호를 보냈습니다."))
+        .catch(error => console.error('PIN 트리거 에러:', error));
+
+        startAutoExpUpdate();
+        
+      } else {
+        alert(result.detail); 
+      }
+    } catch (error) {
+      console.error("로그인 통신 에러:", error);
+      alert('서버와 통신할 수 없습니다. 콘솔(F12)을 확인해주세요.');
+    }
+  }
+  // ==========================================
+  // 3. 쓰레기통(키오스크) PIN 연동 (새로 추가)
+  // ==========================================
+  async function connectKiosk() {
+    const pin = document.getElementById('kiosk-pin').value.trim();
+    if (!pin) { alert('PIN 번호를 입력해주세요.'); return; }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/kiosk/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, pin: pin })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.msg); // "쓰레기통(PIN: 839201)과 연동되었습니다!"
+        document.getElementById('kiosk-pin').disabled = true; // 완료 후 입력칸 잠금
+      } else {
+        alert(result.detail); // "유효하지 않은 PIN 번호입니다."
+      }
+    } catch (error) {
+      alert('서버와 통신할 수 없습니다.');
+    }
+  }
+
+  /* ---------------- 탭 전환 ---------------- */
+
+  function showTab(tabId) {
+    document.querySelectorAll('.subview').forEach(v => v.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+
+    if (tabId === 'tab-ranking') renderRanking('rankingList', 10);
+    if (tabId === 'tab-dashboard') renderDashboard();
+  }
+
+  /* ---------------- EXP / 레벨 로직 ---------------- */
+
+  function grantExp(amount) {
+    if (currentUser.currentLevel >= 5) return;
+
+    const expPerLevel = currentUser.totalTargetExp / 5;
+    currentUser.currentExp += amount;
+
+    while (currentUser.currentExp >= expPerLevel && currentUser.currentLevel < 5) {
+      currentUser.currentExp -= expPerLevel;
+      currentUser.currentLevel++;
+
+      if (currentUser.currentLevel === 5) {
+        currentUser.currentExp = expPerLevel;
+        alert('🎉 축하합니다! Lv.5 만렙을 달성했습니다! 쿠폰을 받아가세요.');
+        break;
+      } else {
+        alert('🎉 레벨 업! ' + catLevels[currentUser.currentLevel - 1].name);
+      }
+    }
+  }
+
+  function matInfo(key) {
+    return MATERIALS.find(m => m.key === key) || { label: key, icon: '❔' };
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function renderPetRecord() {
+    const history = currentUser.history || [];
+    const total = history.length;
+    const cleanEntries = history.filter(h => h.clean);
+    const dirtyEntries = history.filter(h => !h.clean);
+    const totalWeight = history.reduce((s, h) => s + h.weight, 0);
+    const recycledWeight = cleanEntries.reduce((s, h) => s + h.weight, 0);
+    const successRate = total ? Math.round((cleanEntries.length / total) * 100) : 0;
+
+    document.getElementById('recTotalCount').innerText = total.toLocaleString() + '개';
+    document.getElementById('recTotalWeight').innerText = totalWeight.toFixed(2) + 'kg';
+    document.getElementById('recSuccessRate').innerText = successRate + '%';
+    document.getElementById('recDirtyCount').innerText = dirtyEntries.length.toLocaleString() + '개';
+
+    // 재질별 비율
+    const matBox = document.getElementById('materialBreakdown');
+    if (total === 0) {
+      matBox.innerHTML = '<div class="history-empty">아직 투입 기록이 없습니다. 시뮬레이션 버튼을 눌러보세요.</div>';
+    } else {
+      matBox.innerHTML = MATERIALS.map(m => {
+        const count = history.filter(h => h.material === m.key).length;
+        const pct = Math.round((count / total) * 100);
+        if (count === 0) return '';
+        return `
+          <div class="mat-bar-row">
+            <span class="mat-icon">${m.icon}</span>
+            <span class="mat-label">${m.label}</span>
+            <div class="mat-bar-track"><div class="mat-bar-fill" style="width:${pct}%"></div></div>
+            <span class="mat-pct">${pct}%</span>
+          </div>`;
+      }).join('');
+    }
+
+    // 가장 자주 실수하는 재질 하이라이트
+    const tipEl = document.getElementById('mistakeTip');
+    if (dirtyEntries.length > 0) {
+      const dirtyCountByMat = {};
+      dirtyEntries.forEach(h => { dirtyCountByMat[h.material] = (dirtyCountByMat[h.material] || 0) + 1; });
+      const worstKey = Object.keys(dirtyCountByMat).sort((a, b) => dirtyCountByMat[b] - dirtyCountByMat[a])[0];
+      const worst = matInfo(worstKey);
+      tipEl.classList.remove('hidden');
+      tipEl.innerText = `💡 ${worst.icon} ${worst.label}에서 오염 판별이 가장 자주 나와요 (${dirtyCountByMat[worstKey]}회). 라벨을 떼고 헹궈서 버려보세요!`;
+    } else {
+      tipEl.classList.add('hidden');
+    }
+
+    // 환경 임팩트
+    document.getElementById('impactTrees').innerText = (recycledWeight * TREE_PER_KG).toFixed(2) + '그루';
+    document.getElementById('impactCo2').innerText = (recycledWeight * CO2_PER_KG).toFixed(2) + 'kg';
+
+    // 최근 기록
+    const listEl = document.getElementById('historyList');
+    if (total === 0) {
+      listEl.innerHTML = '<div class="history-empty">아직 투입 기록이 없습니다.</div>';
+    } else {
+      const recent = history.slice(-15).reverse();
+      listEl.innerHTML = recent.map(h => {
+        const m = matInfo(h.material);
+        const badge = h.clean ? '<span class="h-badge clean">Clean</span>' : '<span class="h-badge dirty">Dirty</span>';
+        const reportBtn = h.clean ? '' :
+          (h.reported
+            ? '<button type="button" class="report-btn done" disabled>신고완료</button>'
+            : `<button type="button" class="report-btn" onclick="reportMisclass(${h.ts})">오분류 신고</button>`);
+        return `
+          <div class="history-row">
+            <span class="h-icon">${m.icon}</span>
+            <div class="h-main">
+              <div class="h-mat">${m.label}</div>
+              <div class="h-time">${formatTime(h.ts)}</div>
+            </div>
+            <span class="h-weight">${h.weight.toFixed(2)}kg</span>
+            ${badge}
+            ${reportBtn}
+          </div>`;
+      }).join('');
+    }
+  }
+
+  function reportMisclass(ts) {
+    const entry = (currentUser.history || []).find(h => h.ts === ts);
+    if (!entry || entry.reported) return;
+    entry.reported = true;
+    saveData();
+    renderPetRecord();
+    alert('오분류 신고가 접수되었습니다. AI 모델 개선에 활용할게요!');
+  }
+
+  function updateMainUI() {
+    document.getElementById('userWelcome').innerText = currentUser.nick + '님의 에코펫';
+
+    const cat = catLevels[currentUser.currentLevel - 1];
+    document.getElementById('catLevelName').innerText = cat.name;
+    document.getElementById('lvlBadgeTop').innerText = 'Lv.' + currentUser.currentLevel;
+    document.getElementById('targetCouponText').innerText = '목표 쿠폰: ' + currentUser.targetCoupon;
+
+    document.getElementById('petBody').setAttribute('fill', cat.color);
+    document.getElementById('antennaTip').setAttribute('fill', cat.color);
+    document.getElementById('petCrown').classList.toggle('show', currentUser.currentLevel === 5);
+
+    const expPerLevel = currentUser.totalTargetExp / 5;
+    const percent = Math.min(100, (currentUser.currentExp / expPerLevel) * 100);
+
+    document.getElementById('expFill').style.width = percent + '%';
+    document.getElementById('expText').innerText =
+      currentUser.currentExp.toLocaleString() + ' / ' + expPerLevel.toLocaleString() + ' EXP (Lv.' + currentUser.currentLevel + ')';   
+
+    renderPetRecord();
+  }
+
+  function claimRewardAndReset() {
+    alert('🎁 [' + currentUser.targetCoupon + '] 쿠폰이 정상적으로 수령되었습니다!\n에코펫이 Lv.1로 초기화되어 다시 키우기를 시작합니다.');
+
+    currentUser.targetCoupon = '';
+    currentUser.totalTargetExp = 0;
+    currentUser.currentLevel = 1;
+    currentUser.currentExp = 0;
+
+    saveData();
+    showScreen('screen-select-coupon');
+  }
+
+  function saveData() {
+    // 💡 이제 진짜 서버 DB를 사용하므로 브라우저 로컬 저장소(localStorage) 저장은 제외합니다.
+    console.log("데이터가 AWS 데이터베이스에 안전하게 자동 보관 중입니다.");
+  }
+
+  /* ---------------- 랭킹 / 대시보드 ---------------- */
+
+  // 💡 [수정됨] 서버 DB에서 전국 랭킹을 가져와 화면에 그리는 함수
+  async function renderRanking(containerId, limit) {
+    try {
+      // 1. 서버에 랭킹 데이터 요청 (최대 limit 명까지)
+      const response = await fetch(`${API_BASE}/api/ranking?limit=${limit}`);
+      const data = await response.json();
+      const list = data.ranking || [];
+
+      const el = document.getElementById(containerId);
+      
+      // 2. 가입자가 없을 경우 처리
+      if (list.length === 0) {
+        el.innerHTML = '<div class="rank-empty">아직 가입한 사용자가 없습니다.</div>';
+        return;
+      }
+      
+      // 3. 랭킹 리스트 화면에 그리기
+      const medals = ['🥇', '🥈', '🥉'];
+      el.innerHTML = list.map((u, i) => `
+        <div class="rank-row">
+          <span class="r-num">${medals[i] || (i + 1)}</span>
+          <span class="r-nick">${u.nick}</span>
+          <span class="r-lv" style="margin-left:auto; margin-right:8px;">Lv.${u.level}</span>
+          <span style="font-size:0.65rem; color:var(--sub-text);">${u.exp.toLocaleString()} EXP</span>
+        </div>
+      `).join('');
+      
+    } catch (error) {
+      console.error("랭킹 로드 에러:", error);
+      document.getElementById(containerId).innerHTML = '<div class="rank-empty">랭킹 정보를 불러올 수 없습니다.</div>';
+    }
+  }
+
+  function renderDashboard() {
+    const all = getRankedUsers();
+    const totalUsers = Object.keys(users).length;
+    const activeUsers = all.length;
+    const avgLevel = activeUsers ? (all.reduce((s, u) => s + u.currentLevel, 0) / activeUsers).toFixed(1) : '0.0';
+    const completed = all.filter(u => u.currentLevel === 5).length;
+
+    document.getElementById('dashStats').innerHTML = `
+      <div class="stat-box"><div class="n">${totalUsers}</div><div class="l">전체 가입자 수</div></div>
+      <div class="stat-box"><div class="n">${activeUsers}</div><div class="l">진행 중인 유저</div></div>
+      <div class="stat-box"><div class="n">${avgLevel}</div><div class="l">평균 레벨</div></div>
+      <div class="stat-box"><div class="n">${completed}</div><div class="l">만렙 달성 수</div></div>
+    `;
+    renderRanking('dashRankingPreview', 5);
+  }
+
+  /* ---------------- 관리자 모드 ---------------- */
+
+  let reportFilter = 'all';
+
+  function openAdminModal() {
+    document.getElementById('admin-pw').value = '';
+    document.getElementById('admin-pw-msg').textContent = '';
+    document.getElementById('adminModal').classList.add('active');
+  }
+
+  function closeAdminModal() {
+    document.getElementById('adminModal').classList.remove('active');
+  }
+
+  function submitAdminPw() {
+    const pw = document.getElementById('admin-pw').value;
+    if (pw === ADMIN_PASSWORD) {
+      closeAdminModal();
+      showScreen('screen-admin');
+      showAdminTab('admin-tab-users');
+    } else {
+      document.getElementById('admin-pw-msg').textContent = '비밀번호가 올바르지 않습니다.';
+    }
+  }
+
+  function getAllUsersArr() {
+    return Object.keys(users).map(id => ({ id, ...users[id], history: users[id].history || [] }));
+  }
+
+  function showAdminTab(tabId) {
+    document.querySelectorAll('#screen-admin .subview').forEach(v => v.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    document.querySelectorAll('#screen-admin .nav-tab').forEach(t => t.classList.toggle('active', t.dataset.admintab === tabId));
+
+    if (tabId === 'admin-tab-users') renderAdminUsers();
+    if (tabId === 'admin-tab-reports') { renderReportMatRanking(); renderReportQueue(); }
+  }
+
+  // 💡 [수정됨] 진짜 DB에서 회원 목록을 불러와 표에 그리는 함수
+  async function renderAdminUsers() {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/users`);
+      if (!response.ok) throw new Error("서버 에러");
+      
+      const data = await response.json();
+      const allUsers = data.users || [];
+
+      // 관리자 상단 통계 (심플하게 전체 가입자 수만 우선 표시)
+      document.getElementById('adminStats').innerHTML = `
+        <div class="stat-box"><div class="n">${allUsers.length}</div><div class="l">전체 가입자</div></div>
+      `;
+
+      const body = document.getElementById('adminTableBody');
+      
+      if (allUsers.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--sub-text);">가입한 사용자가 없습니다.</td></tr>';
+      } else {
+        body.innerHTML = allUsers.map(u => `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.nick}</td>
+            <td>Lv.${u.level}</td>
+            <td>${u.exp.toLocaleString()}</td>
+            <td>
+              <button onclick="forceDeleteUser('${u.id}')" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">삭제</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    } catch (error) {
+      console.error("관리자 회원 목록 로드 에러:", error);
+      document.getElementById('adminTableBody').innerHTML = '<tr><td colspan="5">데이터를 불러오지 못했습니다.</td></tr>';
+    }
+  }
+
+  // 💡 [새로 추가] 삭제 버튼을 눌렀을 때 실행되는 강제 삭제 함수
+  async function forceDeleteUser(userId) {
+    // 실수로 지우는 것을 방지하기 위해 한 번 더 묻기
+    if (!confirm(`정말로 회원 '${userId}' 님을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.msg);
+        // 삭제 성공 후 회원 목록을 다시 불러와서 화면 갱신
+        renderAdminUsers(); 
+      } else {
+        alert(result.detail);
+      }
+    } catch (error) {
+      console.error("회원 삭제 통신 에러:", error);
+      alert("서버와 통신할 수 없습니다.");
+    }
+  }
+
+  function openUserDetail(id) {
+    const u = users[id];
+    if (!u) return;
+    const history = u.history || [];
+    const reportCount = history.filter(h => h.reported).length;
+    const totalWeight = history.reduce((s, h) => s + h.weight, 0);
+
+    document.getElementById('userDetailTitle').innerText = u.nick + ' (' + id + ')';
+    document.getElementById('userDetailStats').innerHTML = `
+      <div class="stat-box"><div class="n">Lv.${u.currentLevel}</div><div class="l">현재 레벨</div></div>
+      <div class="stat-box"><div class="n">${history.length}</div><div class="l">총 투입</div></div>
+      <div class="stat-box"><div class="n">${totalWeight.toFixed(2)}kg</div><div class="l">총 처리량</div></div>
+      <div class="stat-box"><div class="n">${reportCount}</div><div class="l">오분류 신고</div></div>
+    `;
+
+    const listEl = document.getElementById('userDetailHistory');
+    if (history.length === 0) {
+      listEl.innerHTML = '<div class="history-empty">투입 기록이 없습니다.</div>';
+    } else {
+      const recent = history.slice(-20).reverse();
+      listEl.innerHTML = recent.map(h => {
+        const m = matInfo(h.material);
+        const badge = h.clean ? '<span class="h-badge clean">Clean</span>' : '<span class="h-badge dirty">Dirty</span>';
+        return `
+          <div class="history-row">
+            <span class="h-icon">${m.icon}</span>
+            <div class="h-main">
+              <div class="h-mat">${m.label}</div>
+              <div class="h-time">${formatTime(h.ts)}</div>
+            </div>
+            <span class="h-weight">${h.weight.toFixed(2)}kg</span>
+            ${badge}
+          </div>`;
+      }).join('');
+    }
+
+    document.getElementById('userDetailModal').classList.add('active');
+  }
+
+  function closeUserDetail() {
+    document.getElementById('userDetailModal').classList.remove('active');
+  }
+
+  /* ---- 신고 관리 ---- */
+
+  function getAllReportedEntries() {
+    const rows = [];
+    getAllUsersArr().forEach(u => {
+      u.history.filter(h => h.reported).forEach(h => rows.push({ userId: u.id, nick: u.nick, ...h }));
+    });
+    return rows.sort((a, b) => b.ts - a.ts);
+  }
+
+  function renderReportMatRanking() {
+    const reports = getAllReportedEntries();
+    const el = document.getElementById('reportMatRanking');
+    if (reports.length === 0) {
+      el.innerHTML = '<div class="history-empty">아직 접수된 오분류 신고가 없습니다.</div>';
+      return;
+    }
+    const countByMat = {};
+    reports.forEach(r => { countByMat[r.material] = (countByMat[r.material] || 0) + 1; });
+    const ranked = MATERIALS
+      .map(m => ({ ...m, count: countByMat[m.key] || 0 }))
+      .filter(m => m.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    el.innerHTML = ranked.map(m => {
+      const pct = Math.round((m.count / reports.length) * 100);
+      return `
+        <div class="mat-bar-row">
+          <span class="mat-icon">${m.icon}</span>
+          <span class="mat-label">${m.label}</span>
+          <div class="mat-bar-track"><div class="mat-bar-fill" style="width:${pct}%; background:linear-gradient(90deg,#f87171,#fbbf24);"></div></div>
+          <span class="mat-pct">${m.count}건</span>
+        </div>`;
+    }).join('');
+  }
+
+  function setReportFilter(filter) {
+    reportFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === filter));
+    renderReportQueue();
+  }
+
+  function renderReportQueue() {
+    let reports = getAllReportedEntries();
+    if (reportFilter === 'pending') reports = reports.filter(r => !r.reviewed);
+    if (reportFilter === 'resolved') reports = reports.filter(r => r.reviewed);
+
+    const el = document.getElementById('reportQueueList');
+    if (reports.length === 0) {
+      el.innerHTML = '<div class="history-empty">해당 조건의 신고가 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = reports.map(r => {
+      const m = matInfo(r.material);
+      const statusPill = r.reviewed
+        ? '<span class="status-pill resolved">확인완료</span>'
+        : '<span class="status-pill pending">검토중</span>';
+      const actionBtn = r.reviewed
+        ? `<button type="button" class="resolve-btn" onclick="toggleReportReviewed('${r.userId}', ${r.ts})">검토중으로</button>`
+        : `<button type="button" class="resolve-btn" onclick="toggleReportReviewed('${r.userId}', ${r.ts})">확인완료로</button>`;
+      return `
+        <div class="report-row">
+          <span class="h-icon">${m.icon}</span>
+          <div class="rp-main">
+            <div class="rp-user">${r.nick} <span style="color:var(--sub-text); font-weight:400;">· ${m.label}</span></div>
+            <div class="rp-sub">${formatTime(r.ts)} · ${r.weight.toFixed(2)}kg</div>
+          </div>
+          ${statusPill}
+          ${actionBtn}
+        </div>`;
+    }).join('');
+  }
+
+  function toggleReportReviewed(userId, ts) {
+    const u = users[userId];
+    if (!u || !u.history) return;
+    const entry = u.history.find(h => h.ts === ts);
+    if (!entry) return;
+    entry.reviewed = !entry.reviewed;
+    localStorage.setItem('ecoCatUsers', JSON.stringify(users));
+    renderReportQueue();
+  }
+
+  /* ---- CSV 내보내기 ---- */
+
+  function downloadCSV(filename, rows) {
+    const csv = rows.map(row =>
+      row.map(cell => {
+        const s = String(cell ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')
+    ).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportUsersCSV() {
+    const all = getAllUsersArr();
+    const rows = [['아이디', '닉네임', '레벨', 'EXP', '목표쿠폰', '가입일시', '총투입건수', '오분류신고수']];
+    all.forEach(u => {
+      rows.push([
+        u.id, u.nick, u.currentLevel, Math.round(u.currentExp), u.targetCoupon || '',
+        u.createdAt ? formatTime(u.createdAt) : '', u.history.length, u.history.filter(h => h.reported).length
+      ]);
+    });
+    downloadCSV('ecocat_users.csv', rows);
+  }
+
+  function exportHistoryCSV() {
+    const rows = [['아이디', '닉네임', '일시', '재질', '무게(kg)', '판별결과', '오분류신고', '검토상태']];
+    getAllUsersArr().forEach(u => {
+      u.history.forEach(h => {
+        rows.push([
+          u.id, u.nick, formatTime(h.ts), matInfo(h.material).label, h.weight,
+          h.clean ? 'Clean' : 'Dirty', h.reported ? 'O' : '', h.reported ? (h.reviewed ? '확인완료' : '검토중') : ''
+        ]);
+      });
+    });
+    downloadCSV('ecocat_history.csv', rows);
+  }
+
+  function closeAdmin() {
+    if (currentUser) {
+      showScreen('screen-app');
+      showTab('tab-ecopet');
+    } else {
+      showScreen('screen-login');
+    }
+  }
+  // 💡 [수정 완료] 백그라운드에서 경험치 및 투입 히스토리를 동시 감시하는 함수
+  function startAutoExpUpdate() {
+    setInterval(async () => {
+      if (!currentUser || !currentUser.id) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/user_info/${currentUser.id}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+
+          // 🌟 핵심: 경험치가 변했다는 것은 쓰레기가 정상 투입되었다는 뜻!
+          if (currentUser.currentExp !== data.exp) {
+            console.log(`경험치 변화 감지! ${currentUser.currentExp} -> ${data.exp}`);
+            
+            currentUser.currentExp = data.exp;
+            currentUser.currentLevel = data.level;
+            
+            // 💡 최신 히스토리 목록을 서버에서 다시 땡겨와 갱신합니다.
+            const historyRes = await fetch(`${API_BASE}/api/user_info/${currentUser.id}/history`);
+            if (historyRes.ok) {
+              const historyData = await historyRes.json();
+              currentUser.history = historyData.history || [];
+            }
+
+            // UI 전체 리렌더링 (새로고침 없이 리스트와 통계 그래프가 스르륵 업데이트)
+            updateMainUI(); 
+          }
+        }
+      } catch (error) {
+        // 백그라운드 통신 에러는 사용자 몰래 무시
+      }
+    }, 2000);
+  }
+</script>
+
+</body>
+</html>
